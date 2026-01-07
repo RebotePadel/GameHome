@@ -19,6 +19,18 @@ router.get('/', async (_req: Request, res: Response) => {
   }
 });
 
+// POST /api/tags/reorder - Réorganiser les tags (avant les routes avec :id)
+router.post('/reorder', validate(reorderTagsSchema), async (req: Request, res: Response) => {
+  try {
+    const { tagIds } = req.body;
+    const reordered = await storageService.reorderTags(tagIds);
+    res.json(reordered);
+  } catch (error) {
+    console.error('Error reordering tags:', error);
+    res.status(500).json({ error: 'Erreur lors de la réorganisation' });
+  }
+});
+
 // GET /api/tags/:id - Récupérer un tag
 router.get('/:id', async (req: Request, res: Response) => {
   try {
@@ -102,18 +114,6 @@ router.delete('/:id', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error deleting tag:', error);
     res.status(500).json({ error: 'Erreur serveur' });
-  }
-});
-
-// POST /api/tags/reorder - Réorganiser les tags
-router.post('/reorder', validate(reorderTagsSchema), async (req: Request, res: Response) => {
-  try {
-    const { tagIds } = req.body;
-    const reordered = await storageService.reorderTags(tagIds);
-    res.json(reordered);
-  } catch (error) {
-    console.error('Error reordering tags:', error);
-    res.status(500).json({ error: 'Erreur lors de la réorganisation' });
   }
 });
 

@@ -1,11 +1,112 @@
 import { useEffect, useState } from 'react';
-import { Plus, Trash2, Edit } from 'lucide-react';
+import { Plus, Trash2, Edit, GripVertical } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { useStore } from '../store/useStore';
 import { tagsApi, prenomsApi } from '../services/api';
 import type { Tag, Prenom } from '../types';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+// Composant pour un tag draggable
+interface SortableTagItemProps {
+  tag: Tag;
+  editingTag: Tag | null;
+  onEdit: (tag: Tag) => void;
+  onDelete: (tagId: string) => void;
+  onUpdate: (e: React.FormEvent) => void;
+  onCancelEdit: () => void;
+  onEditChange: (tag: Tag) => void;
+}
+
+function SortableTagItem({
+  tag,
+  editingTag,
+  onEdit,
+  onDelete,
+  onUpdate,
+  onCancelEdit,
+  onEditChange,
+}: SortableTagItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: tag.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-3 p-3 border rounded-lg bg-white"
+    >
+      {editingTag?.id === tag.id ? (
+        <form onSubmit={onUpdate} className="flex-1 flex gap-2">
+          <Input
+            value={editingTag.name}
+            onChange={(e) => onEditChange({ ...editingTag, name: e.target.value })}
+            required
+          />
+          <input
+            type="color"
+            value={editingTag.color}
+            onChange={(e) => onEditChange({ ...editingTag, color: e.target.value })}
+            className="w-16 h-10 rounded border cursor-pointer"
+          />
+          <Button type="submit" size="sm">
+            Enregistrer
+          </Button>
+          <Button type="button" variant="ghost" size="sm" onClick={onCancelEdit}>
+            Annuler
+          </Button>
+        </form>
+      ) : (
+        <>
+          <button
+            className="cursor-grab active:cursor-grabbing p-1 hover:bg-accent rounded"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="w-5 h-5 text-muted-foreground" />
+          </button>
+          <div className="w-6 h-6 rounded-full" style={{ backgroundColor: tag.color }} />
+          <span className="flex-1">{tag.name}</span>
+          <Button variant="ghost" size="sm" onClick={() => onEdit(tag)}>
+            <Edit className="w-4 h-4" />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => onDelete(tag.id)}>
+            <Trash2 className="w-4 h-4 text-destructive" />
+          </Button>
+        </>
+      )}
+    </div>
+  );
+}
 
 export function Settings() {
   const {
@@ -31,6 +132,14 @@ export function Settings() {
   const [newTagName, setNewTagName] = useState('');
   const [newTagColor, setNewTagColor] = useState('#3B82F6');
   const [editingTag, setEditingTag] = useState<Tag | null>(null);
+
+  // Drag & drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   useEffect(() => {
     fetchTags();
@@ -115,6 +224,35 @@ export function Settings() {
       removeTag(tagId);
     } catch (error: any) {
       alert(error.response?.data?.error || 'Erreur lors de la suppression');
+    }
+  };
+
+  // Drag & drop handler
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (!over || active.id === over.id) {
+      return;
+    }
+
+    const sortedTags = [...tags].sort((a, b) => a.order - b.order);
+    const oldIndex = sortedTags.findIndex((tag) => tag.id === active.id);
+    const newIndex = sortedTags.findIndex((tag) => tag.id === over.id);
+
+    const newTags = arrayMove(sortedTags, oldIndex, newIndex);
+
+    // Mettre à jour l'ordre local immédiatement
+    setTags(newTags);
+
+    // Sauvegarder sur le serveur
+    try {
+      const tagIds = newTags.map((tag) => tag.id);
+      const response = await tagsApi.reorder(tagIds);
+      setTags(response.data);
+    } catch (error) {
+      console.error('Error reordering tags:', error);
+      // Recharger les tags en cas d'erreur
+      fetchTags();
     }
   };
 
@@ -281,71 +419,38 @@ export function Settings() {
             <Card>
               <CardHeader>
                 <CardTitle>Liste des catégories ({tags.length})</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Glisser-déposer pour réorganiser
+                </p>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2">
-                  {tags
-                    .sort((a, b) => a.order - b.order)
-                    .map((tag) => (
-                      <div
-                        key={tag.id}
-                        className="flex items-center gap-3 p-3 border rounded-lg"
-                      >
-                        {editingTag?.id === tag.id ? (
-                          <form onSubmit={handleUpdateTag} className="flex-1 flex gap-2">
-                            <Input
-                              value={editingTag.name}
-                              onChange={(e) =>
-                                setEditingTag({ ...editingTag, name: e.target.value })
-                              }
-                              required
-                            />
-                            <input
-                              type="color"
-                              value={editingTag.color}
-                              onChange={(e) =>
-                                setEditingTag({ ...editingTag, color: e.target.value })
-                              }
-                              className="w-16 h-10 rounded border cursor-pointer"
-                            />
-                            <Button type="submit" size="sm">
-                              Enregistrer
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setEditingTag(null)}
-                            >
-                              Annuler
-                            </Button>
-                          </form>
-                        ) : (
-                          <>
-                            <div
-                              className="w-6 h-6 rounded-full"
-                              style={{ backgroundColor: tag.color }}
-                            />
-                            <span className="flex-1">{tag.name}</span>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setEditingTag(tag)}
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteTag(tag.id)}
-                            >
-                              <Trash2 className="w-4 h-4 text-destructive" />
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    ))}
-                </div>
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext
+                    items={tags.sort((a, b) => a.order - b.order).map((t) => t.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <div className="space-y-2">
+                      {tags
+                        .sort((a, b) => a.order - b.order)
+                        .map((tag) => (
+                          <SortableTagItem
+                            key={tag.id}
+                            tag={tag}
+                            editingTag={editingTag}
+                            onEdit={setEditingTag}
+                            onDelete={handleDeleteTag}
+                            onUpdate={handleUpdateTag}
+                            onCancelEdit={() => setEditingTag(null)}
+                            onEditChange={setEditingTag}
+                          />
+                        ))}
+                    </div>
+                  </SortableContext>
+                </DndContext>
               </CardContent>
             </Card>
           </div>

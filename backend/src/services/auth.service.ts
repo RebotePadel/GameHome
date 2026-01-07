@@ -7,15 +7,24 @@ class AuthService {
   async initializePassword(): Promise<void> {
     const config = await storageService.getConfig();
 
-    // Si le mot de passe n'est pas encore hashé correctement, on le hash
+    // Vérifier si le hash est valide en testant la comparaison
     try {
-      await bcrypt.compare(this.PUBLISH_PASSWORD, config.publishPassword);
-    } catch {
-      // Hash invalide, on crée un nouveau hash
+      const isValid = await bcrypt.compare(this.PUBLISH_PASSWORD, config.publishPassword);
+      if (!isValid) {
+        // Hash ne correspond pas, on régénère
+        const hashedPassword = await bcrypt.hash(this.PUBLISH_PASSWORD, 10);
+        config.publishPassword = hashedPassword;
+        await storageService.saveConfig(config);
+        console.log('✅ Mot de passe de publication initialisé');
+      } else {
+        console.log('✅ Mot de passe de publication déjà configuré');
+      }
+    } catch (error) {
+      // Hash invalide ou erreur, on crée un nouveau hash
       const hashedPassword = await bcrypt.hash(this.PUBLISH_PASSWORD, 10);
       config.publishPassword = hashedPassword;
       await storageService.saveConfig(config);
-      console.log('✅ Mot de passe de publication initialisé');
+      console.log('✅ Mot de passe de publication initialisé (après erreur)');
     }
   }
 
