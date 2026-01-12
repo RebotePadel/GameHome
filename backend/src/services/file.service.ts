@@ -3,7 +3,7 @@ import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { Attachment } from '../types';
 
-const UPLOADS_DIR = path.join(__dirname, '../../uploads');
+const UPLOADS_DIR = path.join(process.cwd(), 'uploads');
 
 class FileService {
   private async ensureUploadDir(date: string) {

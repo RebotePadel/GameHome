@@ -2,7 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { Message, Tag, Prenom, Config, StorageData } from '../types';
 
-const DATA_DIR = path.join(__dirname, '../../data');
+const DATA_DIR = path.join(process.cwd(), 'data');
 const MESSAGES_FILE = path.join(DATA_DIR, 'messages.json');
 const TAGS_FILE = path.join(DATA_DIR, 'tags.json');
 const PRENOMS_FILE = path.join(DATA_DIR, 'prenoms.json');

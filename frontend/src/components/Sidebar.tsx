@@ -11,9 +11,15 @@ export function Sidebar() {
 
   return (
     <aside className="w-64 border-r bg-card h-screen flex flex-col sticky top-0">
-      <div className="p-6 border-b">
-        <h1 className="text-2xl font-bold">GameHome</h1>
-        <p className="text-sm text-muted-foreground">Main Courante</p>
+      {/* Logo */}
+      <div className="p-6 border-b flex flex-col items-center">
+        <img
+          src="https://www.gameparc86.fr/wp-content/uploads/2018/10/Game-Parc-bords-arrondis.png"
+          alt="Game Parc"
+          className="w-32 h-auto mb-3"
+        />
+        <h1 className="text-2xl font-bold text-center">GameHome</h1>
+        <p className="text-sm text-muted-foreground text-center">Main Courante</p>
       </div>
 
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto">

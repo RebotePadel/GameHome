@@ -1,7 +1,7 @@
 import multer from 'multer';
 import path from 'path';
 
-const UPLOAD_DIR = path.join(__dirname, '../../uploads/temp');
+const UPLOAD_DIR = path.join(process.cwd(), 'uploads/temp');
 
 // Configuration multer
 const storage = multer.diskStorage({

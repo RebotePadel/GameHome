@@ -38,7 +38,7 @@ const limiter = rateLimit({
 app.use('/api/', limiter);
 
 // Servir les fichiers uploadés
-const UPLOADS_DIR = path.join(__dirname, '../uploads');
+const UPLOADS_DIR = path.join(process.cwd(), 'uploads');
 app.use('/uploads', express.static(UPLOADS_DIR));
 
 // Routes API
@@ -58,7 +58,7 @@ app.get('/api/health', (_req: Request, res: Response) => {
 });
 
 // Servir le frontend en production
-const FRONTEND_DIST = path.join(__dirname, '../../frontend/dist');
+const FRONTEND_DIST = path.join(process.cwd(), 'frontend/dist');
 app.use(express.static(FRONTEND_DIST));
 app.get('*', async (req: Request, res: Response, next: NextFunction) => {
   // Ne pas intercepter les routes API
